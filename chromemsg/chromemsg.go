@@ -6,30 +6,31 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"os"
+	"unsafe"
 )
 
-const nativeEndian binary.ByteOrder = endianness()
+var nativeEndian binary.ByteOrder = endianness()
 
-const defaultReader = MessageReader{bufio.NewReader(os.Stdin)}
+var defaultReader = MessageReader{bufio.NewReader(os.Stdin)}
 
 type MessageReader struct {
 	in *bufio.Reader
 }
 
 func New(in *bufio.Reader) *MessageReader {
-	return MessageReader{in}
+	return &MessageReader{in}
 }
 
-func Read(data *interface{}) {
+func Read(data interface{}) {
 	defaultReader.Read(data)
 }
 
-func (reader *MessageReader) Read(data *interface{}) {
+func (reader *MessageReader) Read(data interface{}) {
 	lengthBits := make([]byte, 4)
 	reader.in.Read(lengthBits)
 	length := nativeToInt(lengthBits)
 	content := make([]byte, length)
-	s.Read(content)
+	reader.in.Read(content)
 	json.Unmarshal(content, data)
 }
 
