@@ -11,27 +11,59 @@ import (
 
 var nativeEndian binary.ByteOrder = endianness()
 
-var defaultReader = MessageReader{bufio.NewReader(os.Stdin)}
+var defaultMsgr = Messenger{bufio.NewReadWriter(
+	bufio.NewReader(os.Stdin),
+	bufio.NewWriter(os.Stdout))}
 
-type MessageReader struct {
-	in *bufio.Reader
+type Messenger struct {
+	port *bufio.ReadWriter
 }
 
-func New(in *bufio.Reader) *MessageReader {
-	return &MessageReader{in}
+func New(port *bufio.ReadWriter) *Messenger {
+	return &Messenger{port}
 }
 
 func Read(data interface{}) {
-	defaultReader.Read(data)
+	defaultMsgr.Read(data)
 }
 
-func (reader *MessageReader) Read(data interface{}) {
+func Write(msg interface{}) error {
+	return defaultMsgr.Write(msg)
+}
+
+func (msgr *Messenger) Read(data interface{}) {
 	lengthBits := make([]byte, 4)
-	reader.in.Read(lengthBits)
+	msgr.port.Read(lengthBits)
 	length := nativeToInt(lengthBits)
 	content := make([]byte, length)
-	reader.in.Read(content)
+	msgr.port.Read(content)
 	json.Unmarshal(content, data)
+}
+
+func (msgr *Messenger) Write(msg interface{}) error {
+	json, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	length := len(json)
+	bits := make([]byte, 4)
+	buf := bytes.NewBuffer(bits)
+	err = binary.Write(buf, nativeEndian, length)
+	if err != nil {
+		return err
+	}
+	_, err = msgr.port.Write(bits)
+	if err != nil {
+		return err
+	}
+
+	_, err = msgr.port.Write(json)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func nativeToInt(bits []byte) int {
