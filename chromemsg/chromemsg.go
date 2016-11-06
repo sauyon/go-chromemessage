@@ -23,21 +23,28 @@ func New(port *bufio.ReadWriter) *Messenger {
 	return &Messenger{port}
 }
 
-func Read(data interface{}) {
-	defaultMsgr.Read(data)
+func Read(data interface{}) error {
+	return defaultMsgr.Read(data)
 }
 
 func Write(msg interface{}) error {
 	return defaultMsgr.Write(msg)
 }
 
-func (msgr *Messenger) Read(data interface{}) {
+func (msgr *Messenger) Read(data interface{}) error {
 	lengthBits := make([]byte, 4)
-	msgr.port.Read(lengthBits)
+	_, err := msgr.port.Read(lengthBits)
+	if err != nil {
+		return err
+	}
 	length := nativeToInt(lengthBits)
 	content := make([]byte, length)
-	msgr.port.Read(content)
+	_, err = msgr.port.Read(content)
+	if err != nil {
+		return err
+	}
 	json.Unmarshal(content, data)
+	return nil
 }
 
 func (msgr *Messenger) Write(msg interface{}) error {
